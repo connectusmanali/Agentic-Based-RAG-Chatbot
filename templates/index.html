@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Jovi Chatbot</title>
+  <style>
+    body { font-family: Arial; padding: 2rem; max-width: 600px; margin: auto; }
+    input, button { padding: 10px; font-size: 16px; }
+    .chat-box { margin-top: 2rem; background: #f0f0f0; padding: 1rem; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>🤖 Jovi Chatbot</h1>
+
+  <form method="post" action="/">
+    <input type="text" name="query" placeholder="Ask something..." required />
+    <button type="submit">Send</button>
+  </form>
+  {% if answer %}
+    <div class="chat-box">
+      <p><strong>You:</strong> {{ query }}</p>
+      <p><strong>Jovi:</strong> {{ answer }}</p>
+    </div>
+  {% endif %}
+</body>
+</html>

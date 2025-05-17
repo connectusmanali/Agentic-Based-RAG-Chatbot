@@ -1,0 +1,192 @@
+<!-- templates/chat.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>JoviBot Chat</title>
+  <link rel="stylesheet" href="/static/chat.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="chat-wrapper">
+    <div class="chatbox">
+      <div class="header">
+        <div class="bot-info">
+          <img src="/static/images/Avatar.png" class="avatar" alt="Bot Avatar">
+          <div class="bot-name">JoviBot<br><small class="bot-sub">jovirealty.com | This is the Way.</small></div>
+        </div>
+        <div class="menu-container">
+          <button class="menu-button" onclick="toggleMenu()">⋮</button>
+          <div id="dropdown-menu" class="dropdown-menu hidden">
+            <button onclick="endChat()">
+              🚪 Leave Chat
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        {% for msg in initial_messages %}
+          <div class="message bot greeting">{{ msg | safe }}</div>
+        {% endfor %}
+      </div>
+
+      <canvas id="waveform" width="400" height="40" class="hidden"></canvas>
+
+      <form id="chat-form" action="javascript:void(0);">
+        <input type="text" id="user-input" placeholder="Type your message..." required />
+        <button type="submit">➤</button>
+        <button type="button" id="record-button">
+          <img id="mic-icon" src="/static/images/microphone.png" alt="Record" class="mic-icon" />
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const messages = document.getElementById('messages');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('user-input');
+    const recordBtn = document.getElementById('record-button');
+    const micIcon = document.getElementById('mic-icon');
+    const canvas = document.getElementById('waveform');
+    const canvasCtx = canvas.getContext('2d');
+    let mediaRecorder;
+    let audioChunks = [];
+    let analyser, dataArray, animationId;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      appendMessage('user', text);
+      appendMessage('bot', '<span class="typing-indicator"><span></span><span></span><span></span></span>', true);
+
+
+      const formData = new FormData();
+      formData.append('message', text);
+      const res = await fetch('/api/query', { method: 'POST', body: formData });
+      const data = await res.json();
+      updateBotResponse(marked.parse(data.answer));
+    });
+
+    function appendMessage(sender, content, isPending = false) {
+      const msg = document.createElement('div');
+      msg.className = `message ${sender} ${isPending ? 'pending' : ''}`;
+      msg.innerHTML = content;
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function updateBotResponse(html) {
+      const pending = document.querySelector('.message.bot.pending');
+      if (pending) {
+        pending.classList.remove('pending');
+        pending.innerHTML = html;
+      }
+    }
+
+    recordBtn.addEventListener('click', async () => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        stopWaveform();
+        micIcon.src = '/static/images/microphone.png';
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      const bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+      source.connect(analyser);
+
+      canvas.classList.remove('hidden');
+      drawWaveform();
+
+      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        stopWaveform();
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        const file = new File([audioBlob], 'voice.webm', { type: 'audio/webm' });
+        formData.append('file', file);
+
+        const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        appendMessage('user', data.query);
+        appendMessage('bot', '<span class="loader"></span>', true);
+
+        const botRes = await fetch('/api/query', {
+          method: 'POST',
+          body: new URLSearchParams({ message: data.query })
+        });
+        const botData = await botRes.json();
+        updateBotResponse(marked.parse(botData.answer));
+      };
+
+      mediaRecorder.start();
+      micIcon.src = 'static/images/recording_stop.png';
+    });
+
+    function drawWaveform() {
+      animationId = requestAnimationFrame(drawWaveform);
+      analyser.getByteFrequencyData(dataArray);
+
+      canvasCtx.fillStyle = '#ffffff';
+      canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+      canvasCtx.lineWidth = 2;
+      canvasCtx.strokeStyle = '#8a2be2';
+
+      canvasCtx.beginPath();
+      const sliceWidth = canvas.width * 1.0 / dataArray.length;
+      let x = 0;
+
+      for (let i = 0; i < dataArray.length; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = v * canvas.height / 2;
+
+        if (i === 0) {
+          canvasCtx.moveTo(x, y);
+        } else {
+          canvasCtx.lineTo(x, y);
+        }
+
+        x += sliceWidth;
+      }
+
+      canvasCtx.lineTo(canvas.width, canvas.height / 2);
+      canvasCtx.stroke();
+    }
+
+    function stopWaveform() {
+      cancelAnimationFrame(animationId);
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.classList.add('hidden');
+    }
+
+    function toggleMenu() {
+      const menu = document.getElementById('dropdown-menu');
+      menu.classList.toggle('hidden');
+    }
+
+    function endChat() {
+      window.location.href = '/?ended=true';
+    }
+
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('dropdown-menu');
+      const button = document.querySelector('.menu-button');
+      if (!menu.contains(e.target) && !button.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
