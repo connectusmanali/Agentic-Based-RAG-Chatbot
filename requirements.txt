@@ -1,0 +1,17 @@
+openai
+langchain
+pypdf
+chromadb
+python-dotenv
+langchain-community
+tiktoken
+langchain_openai
+gradio
+langchain-chroma
+datasets
+ragas
+pydantic
+fastapi 
+uvicorn 
+jinja2
+langchain_pinecone
