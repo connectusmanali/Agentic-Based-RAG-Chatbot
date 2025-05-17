@@ -53,50 +53,36 @@ rag-chatbot/
 
 ⚙️ Setup Instructions
 1. Clone the Repository
-bash
-Copy
-Edit
 git clone https://github.com/yourusername/rag-chatbot.git
 cd rag-chatbot
+
 2. Backend Setup (FastAPI)
-bash
-Copy
-Edit
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
 Create a .env file:
 
-env
-Copy
-Edit
 OPENAI_API_KEY=your_openai_api_key
 VECTOR_DB_PATH=./data/faiss_index
+ 
 Run the FastAPI server:
 
-bash
-Copy
-Edit
-uvicorn main:app --reload
+buvicorn main:app --reload
+
 3. Frontend Setup (React)
-bash
-Copy
-Edit
 cd frontend
 npm install
+
 Create a .env file in the frontend directory:
 
-env
-Copy
-Edit
 VITE_API_URL=http://localhost:8000
+
 Start the React development server:
 
-bash
-Copy
-Edit
 npm run dev
+ 
 ✅ To-Do
  Add authentication
 
