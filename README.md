@@ -1,10 +1,3 @@
----
-title: ChatBot
-app_file: chatbot_gradio.py
-sdk: gradio
-sdk_version: 5.25.2
----
-
 # 🧠 RAG Chatbot with FastAPI & React
 
 This project is an AI-powered chatbot built using **Retrieval-Augmented Generation (RAG)**, a **Vector Database**, **FastAPI** for the backend, and **React** for the frontend. It enables users to ask natural language questions and get accurate, context-aware responses from uploaded documents or pre-loaded knowledge sources.
